@@ -35,7 +35,7 @@ h1{padding-right:240px}@media(max-width:480px){h1{padding-right:0;margin-top:44p
 #ptr{position:fixed;top:0;left:0;right:0;height:0;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;color:var(--mut);font-size:13px;z-index:7;pointer-events:none;background:var(--bg)}#ptr span{padding-bottom:10px}#ptr.go{color:var(--txt)}#ptr.busy span::before{content:"↻ ";display:inline-block;animation:spin .8s linear infinite}
 body.pulling{transition:none}body.snapback{transition:transform .2s}
 @media(max-width:640px){.grid{grid-template-columns:1fr}body{padding:10px}.card{padding:10px}.sc{font-size:26px}}
-</style></head><body data-snap="1792713711371"><div id="ptr"><span>Pull to refresh</span></div><div id="rfbar"><button id="rf" class="rfb" type="button" aria-label="Refresh live stats"><span class="ic">↻</span><span class="lb">Live stats</span></button><button id="rfa" class="rfb" type="button" aria-label="Refresh all leagues"><span class="ic">⟳</span><span class="lb">Refresh all</span></button></div><h1>Week 7 · All Leagues</h1><div class="sub"><span class="snap">Snapshot from Thu Oct 22, 5:01 PM PT.</span><span id="stale" class="stale" hidden>Next auto-update within 30 min during games.</span><span id="lv" class="lvn" hidden></span> Yellow-edged players are still to play. Win % comes from the league site; “est.” means my estimate from projections where the site doesn’t show one. Tap any player for their NFL stat line (ESPN, pulled Thu 5:01 PM PT).</div>
+</style></head><body data-snap="1792714353622"><div id="ptr"><span>Pull to refresh</span></div><div id="rfbar"><button id="rf" class="rfb" type="button" aria-label="Refresh live stats"><span class="ic">↻</span><span class="lb">Live stats</span></button><button id="rfa" class="rfb" type="button" aria-label="Refresh all leagues"><span class="ic">⟳</span><span class="lb">Refresh all</span></button></div><h1>Week 7 · All Leagues</h1><div class="sub"><span class="snap">Snapshot from Thu Oct 22, 5:12 PM PT.</span><span id="stale" class="stale" hidden>Next auto-update within 30 min during games.</span><span id="lv" class="lvn" hidden></span> Yellow-edged players are still to play. Win % comes from the league site; “est.” means my estimate from projections where the site doesn’t show one. Tap any player for their NFL stat line (ESPN, pulled Thu 5:12 PM PT).</div>
 <div class="chips"><a class="chip trailing" href="#bhff" data-chip="bhff" data-wp="33"><b>BHFF</b> 0–0 <span>Trailing · 19 left · 33%</span></a><a class="chip trailing" href="#styx" data-chip="styx" data-wp="45"><b>Styx Nation</b> 0–0 <span>Trailing · 20 left · 45%</span></a><a class="chip trailing" href="#bigleague" data-chip="bigleague" data-wp="58"><b>SpaceX League</b> 0–0 <span>Trailing · 21 left · 58%</span></a><a class="chip trailing" href="#boca" data-chip="boca" data-wp="40"><b>Boca West</b> 0–0 <span>Trailing · 19 left · 40%</span></a><a class="chip trailing" href="#armonk" data-chip="armonk" data-wp="78"><b>Armonk</b> 0–0 <span>Trailing · 20 left · 78%</span></a><a class="chip trailing" href="#couch" data-chip="couch" data-wp="50"><b>Couch</b> 0–0 <span>Trailing · 19 left · 50%</span></a></div><div class="grid"><section id="bhff" class="card trailing"><header><h2>BHFF</h2><span class="plat">Yahoo</span><span class="badge">Trailing · 19 left</span><span class="lk"><a href="https://football.fantasysports.yahoo.com/f1/325363/matchup?week=7" target="_blank">Open matchup ↗</a></span></header>
 <div class="wbar"><div style="width:33%"></div></div><div class="vs"><div class="side mine"><div class="tn">Password is Taco</div><div class="mg">Jordan · 3-3-0, 7th</div>
 <div class="sc" data-tot="bhff:m">0</div><div class="totn" data-totn="bhff:m"></div><div class="pj">proj 107.77 <span class="wp">33% win</span></div></div><div class="side opp"><div class="tn">The Medical Ward</div><div class="mg">Dylan · 3-3-0, 8th</div>
@@ -296,66 +296,65 @@ let LV_last=null;
 function lvNote(t){const n=document.getElementById('lv');if(n){n.hidden=false;n.textContent=t}}
 if(typeof module!='undefined')module.exports={parseScoreboard,parseBox,ptsPlayer,ptsDef};
 
-// ---- "Refresh all": trigger the Grok Bot routine webhook, which re-pulls all six leagues and republishes. ----
-// The webhook URL and key are NEVER in the page or repo: they're entered once and kept in this device's localStorage.
-const WH_STORE='mx_refresh_all_webhook_v1';
-function whGet(){try{const c=JSON.parse(localStorage.getItem(WH_STORE)||'null');return c&&c.url?c:null}catch(e){return null}}
-// >>> AUTH: the single place that decides how the key is sent. Default: Authorization: Bearer <key>.
-//     For a named header use e.g. headers['X-Webhook-Key']=cfg.key; for a query param, change the URL here.
-function whRequest(cfg){
- const headers={'Content-Type':'application/json','Authorization':'Bearer '+cfg.key};
- return {url:cfg.url,init:{method:'POST',mode:'cors',cache:'no-store',headers,body:JSON.stringify({source:'matchup-page',ts:Date.now()})}}}
+// ---- "Refresh all": runs the iOS Shortcut "Refresh Matchups", which POSTs to the Grok Bot routine webhook
+// (the webhook key lives only inside the Shortcut). The routine re-pulls all six leagues and republishes.
+try{localStorage.removeItem('mx_refresh_all_webhook_v1')}catch(e){}   // old saved key from the previous design: delete it
+const RA_STORE='mx_refresh_all_pending';
 if(typeof document!="undefined")(function(){
  const st=document.createElement('style');st.textContent=`
 #whm{position:fixed;inset:0;z-index:20;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55)}
 body.whopen #whm{display:flex}
-#whm .bx{background:var(--card);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:16px 16px 28px;width:100%;max-width:640px}
-#whm h3{margin:0 0 4px;font-size:17px}#whm p{color:var(--mut);font-size:12px;margin:0 0 10px}
-#whm label{display:block;font-size:12px;color:var(--mut);margin:8px 0 3px}
-#whm input{width:100%;font-size:16px;padding:10px;border-radius:8px;border:1px solid var(--line);background:#0e1117;color:var(--txt)}
-#whm .row{display:flex;gap:10px;margin-top:14px;align-items:center}
-#whm button{min-height:44px;padding:0 18px;border-radius:99px;border:1px solid var(--line);background:#222836;color:var(--txt);font:600 15px -apple-system,system-ui,sans-serif}
-#whm button.pri{background:#2f5bd3;border-color:#2f5bd3}#whm a{color:var(--mut);font-size:12px;margin-left:auto;text-decoration:underline}
-#allst{display:block;font-size:12px;margin-top:2px;color:var(--y)}#allst[hidden]{display:none}#allst a{color:#7aa2ff}`;
+#whm .bx{background:var(--card);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:16px 16px 28px;width:100%;max-width:640px;max-height:85vh;overflow:auto}
+#whm h3{margin:0 0 6px;font-size:17px}#whm ol{margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.5}#whm li{margin-bottom:6px}
+#whm code{background:#0e1117;border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:12px;word-break:break-all;user-select:all;-webkit-user-select:all}
+#whm p{color:var(--mut);font-size:12px;margin:8px 0 0}
+#whm button{min-height:44px;padding:0 18px;margin-top:14px;border-radius:99px;border:1px solid var(--line);background:#222836;color:var(--txt);font:600 15px -apple-system,system-ui,sans-serif}
+#rfs{align-self:center;color:var(--mut);font-size:12px;text-decoration:underline;padding:10px 4px}
+#allst{display:block;font-size:12px;margin-top:2px;color:var(--y)}#allst[hidden]{display:none}`;
  document.head.appendChild(st);
- const m=document.createElement('div');m.id='whm';m.innerHTML=`<div class="bx" role="dialog" aria-modal="true"><h3>Refresh all: setup<\/h3>
-<p>One-time setup on this device. The webhook URL and key are saved only in this browser (not in the page or on GitHub).<\/p>
-<label for="whu">Webhook URL<\/label><input id="whu" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…">
-<label for="whk">Sender key<\/label><input id="whk" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
-<div class="row"><button class="pri" id="whs" type="button">Save &amp; refresh<\/button><button id="whc" type="button">Cancel<\/button><a href="#" id="whr">reset<\/a><\/div><\/div>`;
+ const m=document.createElement('div');m.id='whm';m.innerHTML=`<div class="bx" role="dialog" aria-modal="true"><h3>Set up “Refresh all”<\/h3>
+<ol><li>Open the <b>Shortcuts<\/b> app → <b>+<\/b> → name it exactly <code>Refresh Matchups<\/code>.<\/li>
+<li>Add one action: <b>Get Contents of URL<\/b>.<\/li>
+<li>URL: <code>https://api2.cursor.sh/automations/webhook/d818276d-2404-5005-9153-7c0bbbc9c20b<\/code><\/li>
+<li>Show More → Method <b>POST<\/b>.<\/li>
+<li>Headers → add <code>Authorization<\/code> = <code>Bearer <\/code> followed by your webhook key.<\/li>
+<li>Request Body <b>JSON<\/b> → add text field <code>source<\/code> = <code>shortcut<\/code>.<\/li><\/ol>
+<p>The key stays inside the Shortcut on your phone; it's never in this page. Then tap “Refresh all”: it runs the Shortcut and comes back here.<\/p>
+<button id="whc" type="button">Close<\/button><\/div>`;
  document.body.appendChild(m);
+ const bar=document.getElementById('rfbar');const su=document.createElement('a');su.id='rfs';su.href='#';su.textContent='Set up';if(bar)bar.appendChild(su);
  const note=document.createElement('span');note.id='allst';note.hidden=true;
  const lv=document.getElementById('lv');(lv&&lv.parentNode?lv.parentNode:document.body).insertBefore(note,lv?lv.nextSibling:null);
  const g=id=>document.getElementById(id),btn=g('rfa'),lab=btn.querySelector('.lb');
- const say=h=>{note.hidden=false;note.innerHTML=h};
+ const say=t=>{note.hidden=false;note.textContent=t};
  const busy=(on,t)=>{btn.classList.toggle('busy',on);lab.textContent=t||'Refresh all'};
- const open=()=>{const c=whGet();g('whu').value=c?c.url:'';g('whk').value=c?c.key:'';document.body.classList.add('whopen')};
  const close=()=>document.body.classList.remove('whopen');
- m.addEventListener('click',e=>{e.stopPropagation();if(e.target===m)close()});
- g('whc').onclick=close;
- g('whr').onclick=e=>{e.preventDefault();localStorage.removeItem(WH_STORE);g('whu').value='';g('whk').value='';g('whu').focus()};
- g('whs').onclick=()=>{const url=g('whu').value.trim(),key=g('whk').value.trim();
-  if(!/^https:\/\//i.test(url)){g('whu').focus();return}
-  localStorage.setItem(WH_STORE,JSON.stringify({url,key}));close();go()};
- let polling=false;
- async function go(){const c=whGet();if(!c){open();return}if(polling)return;
-  busy(true,'Starting…');
-  try{const q=whRequest(c);const r=await fetch(q.url,q.init);if(!r.ok)throw new Error('HTTP '+r.status)}
-  catch(e){busy(false);const cors=e instanceof TypeError;
-   say(`Couldn’t start full refresh (${esc(cors?'request blocked: network or CORS':e.message)}). <a href="#" data-wh>Check webhook settings<\/a>`);return}
-  say('Full refresh started – updates in a few minutes.');busy(true,'Updating…');poll()}
- function poll(){polling=true;const base=+document.body.dataset.snap,t0=Date.now();
-  const tick=async()=>{try{const u=location.pathname+'?t='+Date.now();const t=await (await fetch(u,{cache:'no-store'})).text();
-    const mm=t.match(/data-snap="(\d+)"/);if(mm&&+mm[1]>base){say('New data published – reloading…');location.replace(u);return}}catch(e){}
-   if(Date.now()-t0>=600000){polling=false;busy(false);say('Full refresh started, but no new snapshot after 10 min. It may still be running; tap Live stats or try again later.');return}
-   setTimeout(tick,30000)};
-  setTimeout(tick,30000)}
- btn.addEventListener('click',e=>{e.stopPropagation();go()});
- // Long-press "Refresh all" (or the settings link) to change the saved webhook.
- let lp;btn.addEventListener('touchstart',()=>{lp=setTimeout(()=>{lp=null;open()},700)},{passive:true});
- btn.addEventListener('touchend',e=>{if(lp){clearTimeout(lp);lp=null}else{e.preventDefault()}});
- btn.addEventListener('contextmenu',e=>{e.preventDefault();open()});
- document.addEventListener('click',e=>{const a=e.target.closest('a[data-wh]');if(a){e.preventDefault();e.stopPropagation();open()}},true);
+ m.addEventListener('click',e=>{e.stopPropagation();if(e.target===m)close()});g('whc').onclick=close;
+ su.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();document.body.classList.add('whopen')});
+ const snapNow=()=>+document.body.dataset.snap||0;
+ const getP=()=>{try{return JSON.parse(sessionStorage.getItem(RA_STORE)||'null')}catch(e){return null}};
+ btn.addEventListener('click',e=>{e.stopPropagation();
+  try{sessionStorage.setItem(RA_STORE,JSON.stringify({base:snapNow(),t0:Date.now()}))}catch(_){}
+  say('Starting full refresh…');busy(true,'Starting…');
+  const back=location.origin+location.pathname+'?refreshing=1';
+  location.href='shortcuts://x-callback-url/run-shortcut?name='+encodeURIComponent('Refresh Matchups')+'&x-success='+encodeURIComponent(back);
+  // If iOS never leaves the page (e.g. Shortcut missing / not iOS), reset the button after a bit.
+  setTimeout(()=>{if(!document.hidden){busy(false);say('If nothing happened, tap “Set up” to create the “Refresh Matchups” Shortcut.')}},4000)});
+ // Returning from the Shortcut (?refreshing=1) or a pending refresh in this tab: poll for the new snapshot.
+ const qs=new URLSearchParams(location.search);const flagged=qs.get('refreshing')=='1';
+ if(flagged){qs.delete('refreshing');const q=qs.toString();history.replaceState(null,'',location.pathname+(q?'?'+q:'')+location.hash)}
+ let pend=getP();
+ if(flagged&&!pend){pend={base:snapNow(),t0:Date.now()};try{sessionStorage.setItem(RA_STORE,JSON.stringify(pend))}catch(_){}}
+ if(!pend)return;
+ const done=t=>{try{sessionStorage.removeItem(RA_STORE)}catch(_){}busy(false);if(t)say(t)};
+ if(snapNow()>pend.base){done('Full refresh done – showing the new data.');return}
+ if(Date.now()-pend.t0>=600000){done('Full refresh started, but no new snapshot after 10 min. It may still be running; tap Live stats or try again later.');return}
+ say('Full refresh started – updates in a few minutes.');busy(true,'Updating…');
+ const tick=async()=>{try{const u=location.pathname+'?t='+Date.now();const t=await (await fetch(u,{cache:'no-store'})).text();
+   const mm=t.match(/data-snap="(\d+)"/);if(mm&&+mm[1]>pend.base){say('New data published – reloading…');location.replace(u);return}}catch(e){}
+  if(Date.now()-pend.t0>=600000){done('Full refresh started, but no new snapshot after 10 min. It may still be running; tap Live stats or try again later.');return}
+  setTimeout(tick,30000)};
+ setTimeout(tick,30000);
 })();
 
 // On load: pull live stats once (no reload on failure here, to avoid loops).
